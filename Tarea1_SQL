@@ -1,0 +1,147 @@
+-- Ejercicios Queries de Northwind
+-- Tarea 1 
+
+
+--Tarea 1 parte 1
+	--auxiliares
+select * from suppliers s;
+select * from orders o;
+select * from customers c where c.customer_id = 'VINET';
+select * from territories t;
+
+	-- pregunta 1
+select s.contact_name from suppliers s where s.contact_title = 'Sales Representative';
+
+	--pregunta 2
+select s.contact_name from suppliers s where s.contact_title != 'Marketing Manager';
+
+	--pregunta 3
+select o.order_id from orders o join customers c using (customer_id) where c.country != 'USA';
+
+	--pregunta 4
+select distinct p.product_id, p.product_name from categories c join products p using (category_id) 
+join order_details od using (product_id)
+join orders o using (order_id)
+where shipped_date is not null
+and c.description = 'Cheeses';
+	--pregunta 5
+select o.order_id from orders o where o.ship_country = 'Belgium' or o.ship_country = 'France';
+
+	-- pregunta 6
+
+/*create table countries_latam(
+	id_country numeric(4) constraint pk_countries_latam primary key,
+	country_name varchar(50) not null
+);
+CREATE SEQUENCE id_country_countries_latam_seq START 1 INCREMENT 1 ;
+ALTER TABLE countries_latam  ALTER COLUMN id_country SET DEFAULT nextval('id_country_countries_latam_seq');
+
+insert into countries_latam (country_name)
+values('Antigua & Barbuda'), ('Aruba'),('Bahamas'),('Barbados'),('Cayman Islands'),('Cuba'),
+('Dominica'),('Dominican Republic'),('Grenada'),('Guadeloupe'),('Haiti'),('Jamaica'),('Martinique'),('Puerto Rico'),
+('Saint Barthélemy'),('St. Kitts & Nevis'),('St. Lucia'),('St. Vincent and the Grenadines'),('Trinidad & Tobago'),
+('Turks & Caicos Islands'),('Virgin Islands'),('Belize'),('Costa Rica'),('El Salvador'),('Guatemala'),('Honduras'),('Mexico'),
+('Nicaragua'),('Panama'),('Argentina'),('Bolivia'),('Brazil'),('Chile'),('Colombia'),('Ecuador'),('French Guiana'),('Guyana'),
+('Paraguay'),('Peru'),('Suriname'),('Uruguay'),('Venezuela');
+*/
+select o.order_id, ship_country from orders o join countries_latam cl using(ship_country) ;
+
+	-- pregunta 7
+select o.order_id, ship_country from orders o left join countries_latam cl using(ship_country) where cl.ship_country is null;
+
+	--pregunta 8
+select  concat(e.first_name, ' ', e.last_name) from employees e ;
+
+	--pregunta 9
+select sum(p.unit_price*p.units_in_stock) from products p;  
+
+	--pregunta 10
+select c.country, count(*) from customers c group by (c.country); 
+--select c.country, c.customer_id from customers c where c.country = 'Argentina' or c.country = 'Italy';
+
+
+
+-- Tarea 1 parte 2
+	--auxiliares 
+
+	--pregunta 1: Obtener un reporte de edades de los empleados para checar su elegibilidad para seguro de gastos médicos menores.
+select (e.first_name || ' ' || e.last_name) as "Name", (current_date - e.birth_date)/365 as "Age" from employees e;
+
+	--pregunta 2: Cuál es la orden más reciente por cliente?
+/*select t.customer_id, o.order_id , t.max_order from 
+(select o2.customer_id, max(o2.order_date) as "max_order" from orders o2 group by o2.customer_id ) as t 
+join orders o using(customer_id) where o.order_date = t.max_order; 
+perdón profe me complique la vida jaja
+*/
+select o.customer_id, c.contact_name, max(o.order_id) as recent_order from orders o join customers c using(customer_id) group by customer_id, contact_name;
+
+	--pregunta 3: De nuestros clientes, qué función desempeñan y cuántos son?
+select c.contact_title, count(*) from customers c group by contact_title; 
+
+	--pregunta 4: Cuántos productos tenemos de cada categoría?
+select category_name, count(*) from products p join categories c using(category_id) group by category_name;
+
+	--pregunta 5: Cómo podemos generar el reporte de reorder?
+select p.product_name, p.reorder_level, p.units_in_stock, count(od.order_id) as "num_orders" from products p join order_details od using(product_id) join orders o using(order_id)
+where p.reorder_level >= p.units_in_stock and p.discontinued != 1
+group by p.product_name, p.reorder_level, p.units_in_stock;
+
+	--pregunta 6: A donde va nuestro envío más voluminoso?
+select distinct concat(o.ship_address, ', ', o.ship_city, ', ', o.ship_country) as "Max_Vol_Ship_Adress" from orders o join order_details od2 using(order_id) 
+where od2.quantity = (select max(od.quantity) from order_details od);
+
+	--pregunta 7: Cómo creamos una columna en customers que nos diga si un cliente es bueno, regular, o malo?
+/*
+ * Considero apropiado que se realice una nueva tabla, sin alterar la original pero manteniendo sus mismos datos en el cual se agregue la 
+ * nueva columna deseada, esta nueva columna estara dada por un enum de acuerdo al tipo de cliente que sea:
+ * se toma un cliente por bueno, regular o malo de acuerdo al numero de ordenes que ha solicitado a la compañia en su conjunto 
+ * yo ofrezco como valores arbitrarios el 10 y 20, para los limites dados ya que la mayoria de los clientes han pedido entre 10 y 20
+ */
+select c.customer_id, count(o.order_id) as "no_orders" from orders o right outer join customers c using(customer_id) group by c.customer_id order by 2 asc;
+
+create type preference as enum('bad', 'regular', 'good');
+create temp table customers2 as( 
+select customer_id , c.company_name,  c.contact_name , c.contact_title, c.address, c.city, c.region, 
+c.postal_code, c.country, c.phone, t.no_orders from customers c join 
+(select c.customer_id, count(o.order_id) as "no_orders" from orders o right outer join customers c 
+using(customer_id) group by c.customer_id) as t using(customer_id) 
+);
+
+alter table customers2 add column current_preference preference;
+update customers2
+set current_preference = 'bad' where no_orders <10;
+update customers2
+set current_preference = 'regular' where no_orders between 10 and 20;
+update customers2
+set current_preference = 'good' where no_orders > 20;
+select c2.customer_id, c2.contact_name, c2.city, c2.country, c2.no_orders, c2.current_preference from customers2 c2;
+
+
+	--pregunta 8: Qué colaboradores chambearon durante las fiestas de navidad?
+	/*
+	 * suponemos que se busca responder esta pregunta para conseguir aquellas personas quienes decidieron trabajar en un dia de 
+	 * descanso obligatorio para poderles recompensar por ello, dado a que el dia legalmente de descanso es el 25, solo tomamos esa fecha 
+	 * trabajar el 24 se considera legal en Mexico y no es acredor a ningun caso especial
+	 */ 
+select distinct e.employee_id, (e.first_name || ' ' || e.last_name) as "Name"  
+from orders o join employees e using(employee_id) where extract(month from o.order_date) = 12 and extract(day from o.order_date) = 25;
+	
+	--pregunta 9: Qué productos mandamos en navidad?
+select distinct p.product_name from products p join order_details od using(product_id) join orders o using(order_id)
+where extract(month from o.shipped_date) = 12 and extract(day from o.shipped_date) = 25;
+
+	--pregunta 10: Qué país recibe el mayor volumen de producto?
+	 --Si suponemos que hablamos de un solo envío:
+select distinct o.ship_country from orders o join order_details od2 using(order_id) 
+where od2.quantity = (select max(od.quantity) from order_details od);
+
+	/*
+	 * Podemos considerar que hablamos de la cantidad total de envios de productos a un pais
+	 * es decir, sumar la cantidad solicitada por cada orden que se dirige a un mismo pais 
+   *
+   *select o.ship_country, sum(od.quantity) from orders o join order_details od using(order_id) 
+   *group by o.ship_country order by 2 desc limit 1;
+   */
+
+
+
