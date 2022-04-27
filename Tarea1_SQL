@@ -29,7 +29,7 @@ select o.order_id from orders o where o.ship_country = 'Belgium' or o.ship_count
 
 	-- pregunta 6
 
-/*create table countries_latam(
+create table countries_latam(
 	id_country numeric(4) constraint pk_countries_latam primary key,
 	country_name varchar(50) not null
 );
@@ -43,7 +43,7 @@ values('Antigua & Barbuda'), ('Aruba'),('Bahamas'),('Barbados'),('Cayman Islands
 ('Turks & Caicos Islands'),('Virgin Islands'),('Belize'),('Costa Rica'),('El Salvador'),('Guatemala'),('Honduras'),('Mexico'),
 ('Nicaragua'),('Panama'),('Argentina'),('Bolivia'),('Brazil'),('Chile'),('Colombia'),('Ecuador'),('French Guiana'),('Guyana'),
 ('Paraguay'),('Peru'),('Suriname'),('Uruguay'),('Venezuela');
-*/
+
 select o.order_id, ship_country from orders o join countries_latam cl using(ship_country) ;
 
 	-- pregunta 7
