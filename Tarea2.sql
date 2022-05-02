@@ -33,9 +33,9 @@ values
 
 select * from emails;
 
-select e.nombre, e.email as "invalid email" from emails e where e.email not like '%@%.%' or e.email not like '@%' or e.email not like '%@'
+select e.nombre, e.email as "invalid email" from emails e where e.email not like '%@%.%'
 or e.email like '%..%' or e.email like '%.' or e.email like '%!%' or e.email like '%^%' or e.email like '%@%@%' or email like '%&%'
 or email like '%/%' or email like '%$%' or email like '%#%' or email like '%?%' or email like '%,%' or email like '%;%' or email like '% %'
-or email like '%Â¡%' or email like '%\%' or email like '%(%' or email like '%)%' or email like '%"%' or email like '%|%' or email like '%=%'
-or email like '%>%' or email like '%<%' or email like '%Â¿%' or email like '%+%' or email like '%Â¨%' or email like '%*%' or email like '%[%'or email like '%]%'
+or email like '%¡%' or email like '%\%' or email like '%(%' or email like '%)%' or email like '%"%' or email like '%|%' or email like '%=%'
+or email like '%>%' or email like '%<%' or email like '%¿%' or email like '%+%' or email like '%¨%' or email like '%*%' or email like '%[%'or email like '%]%'
 or email like '%}%' or email like '%{%' or email like '%:%';
