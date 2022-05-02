@@ -36,14 +36,14 @@ select * from emails;
 select e.nombre, e.email as "invalid email" from emails e where e.email not like '%@%.%'
 or e.email like '%..%' or e.email like '%.' or e.email like '%!%' or e.email like '%^%' or e.email like '%@%@%' or email like '%&%'
 or email like '%/%' or email like '%$%' or email like '%#%' or email like '%?%' or email like '%,%' or email like '%;%' or email like '% %'
-or email like '%¡%' or email like '%\%' or email like '%(%' or email like '%)%' or email like '%"%' or email like '%|%' or email like '%=%'
-or email like '%>%' or email like '%<%' or email like '%¿%' or email like '%+%' or email like '%¨%' or email like '%*%' or email like '%[%'or email like '%]%'
+or email like '%Â¡%' or email like '%\%' or email like '%(%' or email like '%)%' or email like '%"%' or email like '%|%' or email like '%=%'
+or email like '%>%' or email like '%<%' or email like '%Â¿%' or email like '%+%' or email like '%Â¨%' or email like '%*%' or email like '%[%'or email like '%]%'
 or email like '%}%' or email like '%{%' or email like '%:%'; 
 
 /*
- * Podemos considerar que los caracteres especiales sí son validos según el siguiente link de internet:
+ * Podemos considerar que los caracteres especiales sÃ­ son validos segÃºn el siguiente link de internet:
  * https://help.returnpath.com/hc/en-us/articles/220560587-What-are-the-rules-for-email-address-syntax-
- * cosa que cabe aclarar 
+ * cosa que cabe aclarar es que eso no me parece logico, en el ultimo caso, cualquier combinacion de caracter especial antes del arroba debe ser invalido
  */
 select e.nombre, e.email as "invalid email" from emails e where e.email not like '%@%.%' or e.email not like '@%' or email not like '%@'
 or email not like '%..%' or email like '%.' or email like '%@%@%' or email like '% %' or email like '%@.%' or email like '%.@%'
