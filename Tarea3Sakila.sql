@@ -21,7 +21,8 @@ group by customer_id, c3.country_id
 having c3.country = 'Canada';
 
 /*
- * 
+ * Al parecer existe esta otra tabla en la bd de sakila en la cual podemos conseguir los datos de forma más directa, sin embargo parece una tabla auxiliar,
+ * por lo que preferí no usarla: 
  * select cl."name" , c.email  from customer_list cl join customer c on(customer_id = id) where cl.country = 'Canada';
  */
 
