@@ -1,0 +1,147 @@
+
+/*Tarea 4
+Una aplicación frecuente de Ciencia de Datos aplicada a la industria del microlending es el de calificaciones crediticias (credit scoring). Puede interpretarse de muchas formas: propensión a pago, probabilidad de default, etc. La intuición nos dice que las variables más importantes son el saldo o monto del crédito, y la puntualidad del pago; sin embargo, otra variable que frecuentemente escapa a los analistas es el tiempo entre cada pago. La puntualidad es una pésima variable para anticipar default o inferir capacidad de pago de micropréstamos, por su misma naturaleza. Si deseamos examinar la viabilidad de un producto de crédito para nuestras videorental stores:
+
+	1. Cuál es el promedio, en formato human-readable, de tiempo entre cada pago por cliente de la BD Sakila?
+	2. Sigue una distribución normal?
+	3. Qué tanto difiere ese promedio del tiempo entre rentas por cliente?
+Fecha de entrega: Lunes 30 de Mayo antes de las 23:59:59 Valor: 10% sobre el final Medio de entrega: su propio repositorio de Github
+*/
+
+--Pregunta 1
+/*select count(customer_id), customer_id  
+from payment p
+group by customer_id 
+order by 1 desc;
+with t as(
+	select payment_date as payment_date_trunc from payment p 
+	where customer_id = '318' 
+	and payment_date between '2005-05-26 10:18:27.000'::timestamp  and '2005-06-21 10:24:35.000'::timestamp)
+select ((max(payment_date_trunc)-min(payment_date_trunc))/3) from t;*/
+
+with diferencias as(
+	select customer_id, payment_date, payment_date - lag(payment_date) over(partition by customer_id order by 1, 2)
+	as dif_pago from payment p 
+),
+t as(
+	select customer_id, avg(dif_pago) as promedio from diferencias group by customer_id
+)
+/*
+ * Creo que la forma más sencilla de obtener el mismo resultado es a partir del siguiente query, para ello es importante notar que en realidad no necesitamos funciones
+ * más allá de las de agregación, pues el promedio de las diferencias es la suma de cada par de pagos consecutivos, pero estos al sumarse todos, dan un total de la 
+ * diferencia del valor máximo de fecha menos el menor valor, solo que las diferencias son una menos que el total de pagos realizados:
+ * 
+ * with t as(
+	select customer_id, (max(payment_date)-min(payment_date))/(count(customer_id)-1) as promedio
+	from payment p group by customer_id order by 1 asc
+)
+ */
+select customer_id, concat(c.first_name, ' ', c.last_name) as nombre, concat(extract('day' from promedio), ' dias ', extract('hour' from promedio), ' horas ', extract('minute' from promedio), ' minutos')
+as promedio_entre_pagos from t join customer c using(customer_id);
+
+
+-- Pregunta 2
+CREATE OR REPLACE FUNCTION histogram(table_name_or_subquery text, column_name text)
+RETURNS TABLE(bucket int, "range" numrange, freq bigint, bar text)
+AS $func$
+BEGIN
+RETURN QUERY EXECUTE format('
+  WITH
+  source AS (
+    SELECT * FROM %s
+  ),
+  min_max AS (
+    SELECT min(%s) AS min, max(%s) AS max FROM source
+  ),
+  histogram AS (
+    SELECT
+      width_bucket(%s, min_max.min, min_max.max, 20) AS bucket,
+      numrange(min(%s)::numeric, max(%s)::numeric, ''[]'') AS "range",
+      count(%s) AS freq
+    FROM source, min_max
+    WHERE %s IS NOT NULL
+    GROUP BY bucket
+    ORDER BY bucket
+  )
+  SELECT
+    bucket,
+    "range",
+    freq::bigint,
+    repeat(''*'', (freq::float / (max(freq) over() + 1) * 15)::int) AS bar
+  FROM histogram',
+  table_name_or_subquery,
+  column_name,
+  column_name,
+  column_name,
+  column_name,
+  column_name,
+  column_name,
+  column_name
+  );
+END
+$func$ LANGUAGE plpgsql;
+
+/*create or replace view tiempo_pago_promedio as
+	with diferencias as(
+		select customer_id, payment_date, payment_date - lag(payment_date) over(partition by customer_id order by 1, 2)
+		as dif_pago from payment p 
+	)
+select customer_id, avg(dif_pago)) as promedio from diferencias group by customer_id;
+no funciona debido a que el campo es tipo timestamp 
+pensé en usar exctract(´second´...) pero eso sería perder información
+investigando encontré esto: https://www.gpsos.es/2020/04/fechas-y-horarios-en-postgresql-como-trabajar-con-ellos/ 
+y me recordó del epoch
+*/
+create or replace view pagos_promedio as
+	with diferencias as(
+		select customer_id, payment_date, payment_date - lag(payment_date) over(partition by customer_id order by 1, 2)
+		as dif_pago from payment p 
+	)
+select customer_id, extract('epoch' from avg(dif_pago)) as promedio from diferencias group by customer_id;
+
+select * from histogram('pagos_promedio', 'promedio');
+
+/*
+ * Observamos que el histograma en realidad tiene una carga mayor en los primeros valores del histograma, esto quiere decir que no tiene una 
+ * distribución normal. Otra forma de verlo podría ser dado que en el histograma se ven dos colinas, pues en la posición 10 obtenemos un
+ * segundo pico, cosa que sabemos que en definitiva no cumple la distribución normal. En dado caso podría verse como una distribución 
+ * bimodal. En dado caso podría darse que es una suma de normales, pues la primera colina puede asemejar una normal; sin embargo, la segunda 
+ * rompe con esta hipotesis al tener una caída menos pronunciada que el crecimiento, mientras que la normal debería ser simétrica.
+ */
+
+
+-- Pregunta 3
+/*
+create or replace view tiempo_rentas as
+	with diferencias2 as(
+		select customer_id, r.rental_date, rental_date - lag(rental_date) over(partition by customer_id order by 1, 2)
+		as dif_renta from rental r 
+	)
+select customer_id, extract('epoch' from avg(dif_renta)) as promedio from diferencias2 group by customer_id;
+
+select * from histogram('tiempo_rentas', 'promedio');
+select * from histogram('pagos_promedio', 'promedio'); 
+
+Preguntar a chucho: por qué el histograma de rentas sí me da una normal?
+*/
+
+with diferencias_pagos as(
+	select customer_id, payment_date, payment_date - lag(payment_date) over(partition by customer_id order by 1, 2)
+	as dif_pago from payment p 
+),
+p as(
+	select customer_id, avg(dif_pago) as promedio_pago from diferencias_pagos group by customer_id
+),
+diferencias_rentas as(
+		select customer_id, r.rental_date, rental_date - lag(rental_date) over(partition by customer_id order by customer_id, rental_date)
+		as dif_renta from rental r 
+),
+r as(
+	select customer_id, avg(dif_renta) as promedio_renta from diferencias_rentas group by customer_id
+)
+select customer_id, concat(c.first_name, ' ', c.last_name) as nombre, 
+	concat(extract('day' from promedio_renta), ' dias ', extract('hour' from promedio_renta), ' horas ', extract('minute' from promedio_renta), ' minutos') 
+	as promedio_entre_rentas, concat(extract('day' from promedio_pago), ' dias ', extract('hour' from promedio_pago), ' horas ', extract('minute' from promedio_pago), ' minutos')
+as promedio_entre_pagos concat(extract('day' from promedio_pago-promedio_renta), ' dias ', extract('hour' from promedio_pago - promedio_renta), ' horas ', 
+	extract('minute' from promedio_pago - promedio_renta), ' minutos') 
+	as diferencias from r join customer c using(customer_id) join p using (customer_id);
