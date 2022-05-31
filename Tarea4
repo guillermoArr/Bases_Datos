@@ -142,6 +142,6 @@ r as(
 select customer_id, concat(c.first_name, ' ', c.last_name) as nombre, 
 	concat(extract('day' from promedio_renta), ' dias ', extract('hour' from promedio_renta), ' horas ', extract('minute' from promedio_renta), ' minutos') 
 	as promedio_entre_rentas, concat(extract('day' from promedio_pago), ' dias ', extract('hour' from promedio_pago), ' horas ', extract('minute' from promedio_pago), ' minutos')
-as promedio_entre_pagos concat(extract('day' from promedio_pago-promedio_renta), ' dias ', extract('hour' from promedio_pago - promedio_renta), ' horas ', 
+as promedio_entre_pagos, concat(extract('day' from promedio_pago-promedio_renta), ' dias ', extract('hour' from promedio_pago - promedio_renta), ' horas ', 
 	extract('minute' from promedio_pago - promedio_renta), ' minutos') 
 	as diferencias from r join customer c using(customer_id) join p using (customer_id);
